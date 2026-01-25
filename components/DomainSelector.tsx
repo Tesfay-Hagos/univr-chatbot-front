@@ -2,6 +2,7 @@
 
 import { Domain } from '@/lib/api';
 import { useEffect, useState } from 'react';
+import ThemeToggle from './ThemeToggle';
 
 // Domain icons mapping
 const domainIcons: Record<string, string> = {
@@ -20,9 +21,11 @@ interface DomainSelectorProps {
     domains: Domain[];
     onSelect: (domain: Domain) => void;
     loading?: boolean;
+    darkMode: boolean;
+    onToggleDarkMode: () => void;
 }
 
-export default function DomainSelector({ domains, onSelect, loading }: DomainSelectorProps) {
+export default function DomainSelector({ domains, onSelect, loading, darkMode, onToggleDarkMode }: DomainSelectorProps) {
     const [selectedCard, setSelectedCard] = useState<string | null>(null);
 
     const getIcon = (domain: string) => {
@@ -52,6 +55,10 @@ export default function DomainSelector({ domains, onSelect, loading }: DomainSel
 
     return (
         <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+            {/* Theme Toggle */}
+            <div className="absolute top-4 right-4 z-10">
+                <ThemeToggle darkMode={darkMode} onToggle={onToggleDarkMode} />
+            </div>
             {/* Header */}
             <header className="pt-12 pb-8 px-4 text-center">
                 <div className="animate-float text-6xl mb-4">🎓</div>

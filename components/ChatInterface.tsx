@@ -2,6 +2,7 @@
 
 import { ChatResponse, sendMessage, Source, fetchSuggestions } from '@/lib/api';
 import { useEffect, useRef, useState } from 'react';
+import ThemeToggle from './ThemeToggle';
 
 interface Message {
     id: string;
@@ -17,26 +18,19 @@ interface ChatInterfaceProps {
         display_name: string;
     };
     onSwitchDomain: () => void;
+    onBackToHome?: () => void;
+    darkMode: boolean;
+    onToggleDarkMode: () => void;
 }
 
-export default function ChatInterface({ domain, onSwitchDomain }: ChatInterfaceProps) {
+export default function ChatInterface({ domain, onSwitchDomain, onBackToHome, darkMode, onToggleDarkMode }: ChatInterfaceProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [darkMode, setDarkMode] = useState(false);
     const [suggestions, setSuggestions] = useState<string[]>([]);
     const [loadingSuggestions, setLoadingSuggestions] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
-
-    // Initialize theme
-    useEffect(() => {
-        const savedTheme = localStorage.getItem('theme');
-        const isDark = savedTheme === 'dark' ||
-            (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        setDarkMode(isDark);
-        document.documentElement.classList.toggle('dark', isDark);
-    }, []);
 
     // Add welcome message and fetch suggestions
     useEffect(() => {
@@ -73,13 +67,6 @@ export default function ChatInterface({ domain, onSwitchDomain }: ChatInterfaceP
     useEffect(() => {
         inputRef.current?.focus();
     }, []);
-
-    const toggleDarkMode = () => {
-        const newMode = !darkMode;
-        setDarkMode(newMode);
-        localStorage.setItem('theme', newMode ? 'dark' : 'light');
-        document.documentElement.classList.toggle('dark', newMode);
-    };
 
     const handleSuggestionClick = (suggestion: string) => {
         setInputValue(suggestion);
@@ -158,6 +145,20 @@ export default function ChatInterface({ domain, onSwitchDomain }: ChatInterfaceP
             {/* Header */}
             <header className="sticky top-0 z-50 glass-panel border-b border-slate-200/50 dark:border-slate-700/50">
                 <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+                    {/* Back button */}
+                    {onBackToHome ? (
+                        <button
+                            onClick={onBackToHome}
+                            className="flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-univr-red transition-colors"
+                        >
+                            <span className="text-xl">←</span>
+                            <span className="font-medium">Back to Home</span>
+                        </button>
+                    ) : (
+                        <div className="w-32"></div>
+                    )}
+
+                    {/* Center: Domain title */}
                     <div className="flex items-center gap-3">
                         <span className="text-2xl animate-float">🎓</span>
                         <div>
@@ -168,15 +169,10 @@ export default function ChatInterface({ domain, onSwitchDomain }: ChatInterfaceP
                         </div>
                     </div>
 
+                    {/* Right: Actions */}
                     <div className="flex items-center gap-2">
                         {/* Dark mode toggle */}
-                        <button
-                            onClick={toggleDarkMode}
-                            className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                            title="Toggle theme"
-                        >
-                            <span className="text-xl">{darkMode ? '☀️' : '🌙'}</span>
-                        </button>
+                        <ThemeToggle darkMode={darkMode} onToggle={onToggleDarkMode} />
 
                         {/* Switch domain button */}
                         <button
