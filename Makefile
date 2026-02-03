@@ -1,3 +1,4 @@
+# Admin Board frontend (ULSS 9 – admin panel)
 .PHONY: install dev build start lint clean
 
 # Install dependencies

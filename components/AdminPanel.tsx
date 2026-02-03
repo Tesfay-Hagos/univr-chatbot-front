@@ -7,6 +7,8 @@ import {
     listStores,
     createDomain,
     deleteDomain,
+    deleteAllStores,
+    createAllUlss9Stores,
     uploadDocument,
     listDocuments,
     deleteDocument
@@ -14,7 +16,7 @@ import {
 import ThemeToggle from './ThemeToggle';
 
 interface AdminPanelProps {
-    onBack: () => void;
+    onBack?: () => void;
     darkMode: boolean;
     onToggleDarkMode: () => void;
 }
@@ -38,6 +40,10 @@ export default function AdminPanel({ onBack, darkMode, onToggleDarkMode }: Admin
     const [uploading, setUploading] = useState(false);
     const [documents, setDocuments] = useState<DocumentInfo[]>([]);
     const [loadingDocs, setLoadingDocs] = useState(false);
+
+    // ULSS 9: delete all / create 4
+    const [deletingAll, setDeletingAll] = useState(false);
+    const [creatingAll, setCreatingAll] = useState(false);
 
     // Load stores
     const loadStores = useCallback(async () => {
@@ -101,6 +107,38 @@ export default function AdminPanel({ onBack, darkMode, onToggleDarkMode }: Admin
         }
     }, [success, error]);
 
+    const handleDeleteAllStores = async () => {
+        if (!confirm('Eliminare TUTTE le categorie su Gemini? I documenti andranno persi. Operazione irreversibile.')) return;
+        setDeletingAll(true);
+        setError(null);
+        setSuccess(null);
+        try {
+            const result = await deleteAllStores();
+            setSuccess(result.message + ' Eliminate: ' + (result.deleted?.join(', ') || 'nessuna'));
+            setSelectedDomain('');
+            await loadStores();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Errore eliminazione');
+        } finally {
+            setDeletingAll(false);
+        }
+    };
+
+    const handleCreateAllUlss9 = async () => {
+        setCreatingAll(true);
+        setError(null);
+        setSuccess(null);
+        try {
+            const result = await createAllUlss9Stores();
+            setSuccess(result.message + ' Categorie: ' + result.stores?.map((s) => s.domain).join(', '));
+            await loadStores();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Errore creazione');
+        } finally {
+            setCreatingAll(false);
+        }
+    };
+
     // Handle domain creation
     const handleCreateDomain = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -110,7 +148,7 @@ export default function AdminPanel({ onBack, darkMode, onToggleDarkMode }: Admin
         setError(null);
         try {
             await createDomain(newDomain.trim(), newDescription.trim());
-            setSuccess(`Domain "${newDomain}" created successfully!`);
+            setSuccess(`Categoria "${newDomain}" creata con successo.`);
             setNewDomain('');
             setNewDescription('');
             await loadStores();
@@ -123,7 +161,7 @@ export default function AdminPanel({ onBack, darkMode, onToggleDarkMode }: Admin
 
     // Handle domain deletion
     const handleDeleteDomain = async (domain: string) => {
-        if (!confirm(`Are you sure you want to delete the domain "${domain}"? This will delete all documents.`)) {
+        if (!confirm(`Eliminare la categoria "${domain}"? Verranno eliminati tutti i documenti.`)) {
             return;
         }
 
@@ -131,7 +169,7 @@ export default function AdminPanel({ onBack, darkMode, onToggleDarkMode }: Admin
         const wasSelected = selectedDomain === domain;
         try {
             await deleteDomain(domain);
-            setSuccess(`Domain "${domain}" deleted successfully!`);
+            setSuccess(`Categoria "${domain}" eliminata.`);
             if (wasSelected) {
                 setSelectedDomain('');
             }
@@ -184,7 +222,7 @@ export default function AdminPanel({ onBack, darkMode, onToggleDarkMode }: Admin
     const handleDrop = async (e: React.DragEvent) => {
         e.preventDefault();
         if (!selectedDomain) {
-            setError('Please select a domain first');
+            setError('Seleziona prima una categoria');
             return;
         }
 
@@ -212,15 +250,19 @@ export default function AdminPanel({ onBack, darkMode, onToggleDarkMode }: Admin
             {/* Header */}
             <header className="sticky top-0 z-10 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-700">
                 <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-                    <button
-                        onClick={onBack}
-                        className="flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-univr-red transition-colors"
-                    >
-                        <span className="text-xl">←</span>
-                        <span className="font-medium">Back to Home</span>
-                    </button>
+                    {onBack ? (
+                        <button
+                            onClick={onBack}
+                            className="flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-univr-red transition-colors"
+                        >
+                            <span className="text-xl">←</span>
+                            <span className="font-medium">Torna alla Home</span>
+                        </button>
+                    ) : (
+                        <div className="w-32" />
+                    )}
                     <h1 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                        <span>⚙️</span> Admin Panel
+                        <span>⚙️</span> Pannello Admin ULSS 9
                     </h1>
                     <div className="flex items-center gap-2">
                         <ThemeToggle darkMode={darkMode} onToggle={onToggleDarkMode} />
@@ -254,7 +296,7 @@ export default function AdminPanel({ onBack, darkMode, onToggleDarkMode }: Admin
                                 : 'bg-white/70 dark:bg-slate-800/70 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800'
                             }`}
                     >
-                        📁 Domain Management
+                        📁 Gestione categorie
                     </button>
                     <button
                         onClick={() => setActiveTab('upload')}
@@ -263,22 +305,52 @@ export default function AdminPanel({ onBack, darkMode, onToggleDarkMode }: Admin
                                 : 'bg-white/70 dark:bg-slate-800/70 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800'
                             }`}
                     >
-                        📤 File Upload
+                        📤 Carica file
                     </button>
                 </div>
 
                 {/* Domain Management Tab */}
                 {activeTab === 'domains' && (
                     <div className="space-y-6">
+                        {/* ULSS 9: Clear all + Create 4 stores */}
+                        <div className="bg-amber-50/80 dark:bg-amber-900/20 backdrop-blur-xl rounded-2xl p-6 border border-amber-200 dark:border-amber-800 shadow-lg">
+                            <h2 className="text-xl font-semibold text-slate-800 dark:text-white mb-2 flex items-center gap-2">
+                                <span>🏥</span> Prepara ULSS 9 (4 categorie)
+                            </h2>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                                Prima elimina tutte le categorie su Gemini, poi crea le 4 categorie iniziali: general_info, hours, locations, services.
+                            </p>
+                            <div className="flex flex-wrap gap-3">
+                                <button
+                                    type="button"
+                                    onClick={handleDeleteAllStores}
+                                    disabled={deletingAll || loading}
+                                    className="px-5 py-2.5 rounded-xl font-medium bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300
+                                             hover:bg-red-200 dark:hover:bg-red-900/60 disabled:opacity-50 transition-all"
+                                >
+                                    {deletingAll ? 'Eliminazione...' : 'Elimina tutte le categorie'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleCreateAllUlss9}
+                                    disabled={creatingAll || loading}
+                                    className="px-5 py-2.5 rounded-xl font-medium bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300
+                                             hover:bg-green-200 dark:hover:bg-green-900/60 disabled:opacity-50 transition-all"
+                                >
+                                    {creatingAll ? 'Creazione...' : 'Crea le 4 categorie iniziali'}
+                                </button>
+                            </div>
+                        </div>
+
                         {/* Create Domain Form */}
                         <div className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-lg">
                             <h2 className="text-xl font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                                <span>✨</span> Create New Domain
+                                <span>✨</span> Crea nuova categoria
                             </h2>
                             <form onSubmit={handleCreateDomain} className="flex flex-col md:flex-row gap-4">
                                 <input
                                     type="text"
-                                    placeholder="Domain name (e.g., scholarships)"
+                                    placeholder="Nome categoria (es. docs)"
                                     value={newDomain}
                                     onChange={(e) => setNewDomain(e.target.value)}
                                     className="flex-1 px-4 py-3 rounded-xl bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 
@@ -287,7 +359,7 @@ export default function AdminPanel({ onBack, darkMode, onToggleDarkMode }: Admin
                                 />
                                 <input
                                     type="text"
-                                    placeholder="Description (optional)"
+                                    placeholder="Descrizione (opzionale)"
                                     value={newDescription}
                                     onChange={(e) => setNewDescription(e.target.value)}
                                     className="flex-1 px-4 py-3 rounded-xl bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 
@@ -299,7 +371,7 @@ export default function AdminPanel({ onBack, darkMode, onToggleDarkMode }: Admin
                                     className="px-8 py-3 bg-gradient-to-r from-univr-red to-univr-red-dark text-white rounded-xl font-medium
                                              hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                                 >
-                                    {creating ? 'Creating...' : 'Create Domain'}
+                                    {creating ? 'Creazione...' : 'Crea categoria'}
                                 </button>
                             </form>
                         </div>
@@ -307,7 +379,7 @@ export default function AdminPanel({ onBack, darkMode, onToggleDarkMode }: Admin
                         {/* Existing Domains List */}
                         <div className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-lg">
                             <h2 className="text-xl font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                                <span>📋</span> Existing Domains
+                                <span>📋</span> Categorie esistenti
                             </h2>
 
                             {loading ? (
@@ -317,7 +389,7 @@ export default function AdminPanel({ onBack, darkMode, onToggleDarkMode }: Admin
                             ) : stores.length === 0 ? (
                                 <div className="text-center py-8 text-slate-500 dark:text-slate-400">
                                     <p className="text-4xl mb-2">📭</p>
-                                    <p>No domains created yet. Create your first domain above!</p>
+                                    <p>Nessuna categoria ancora. Crea la prima categoria sopra.</p>
                                 </div>
                             ) : (
                                 <div className="grid gap-4">
@@ -358,12 +430,12 @@ export default function AdminPanel({ onBack, darkMode, onToggleDarkMode }: Admin
                         {/* Domain Selector */}
                         <div className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-lg">
                             <h2 className="text-xl font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                                <span>📁</span> Select Domain
+                                <span>📁</span> Seleziona categoria
                             </h2>
 
                             {stores.length === 0 ? (
                                 <p className="text-slate-500 dark:text-slate-400">
-                                    No domains available. Please create a domain first.
+                                    Nessuna categoria disponibile. Crea prima una categoria.
                                 </p>
                             ) : (
                                 <select
@@ -372,7 +444,7 @@ export default function AdminPanel({ onBack, darkMode, onToggleDarkMode }: Admin
                                     className="w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 
                                              focus:outline-none focus:ring-2 focus:ring-univr-red/50 text-slate-800 dark:text-white text-lg"
                                 >
-                                    <option value="">-- Select a domain --</option>
+                                    <option value="">-- Seleziona categoria --</option>
                                     {stores.map((store) => (
                                         <option key={store.domain} value={store.domain}>
                                             {store.display_name || store.domain} ({store.document_count} docs)
@@ -421,7 +493,7 @@ export default function AdminPanel({ onBack, darkMode, onToggleDarkMode }: Admin
                         {selectedDomain && (
                             <div className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-lg">
                                 <h2 className="text-xl font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                                    <span>📚</span> Documents in "{selectedDomain}"
+                                    <span>📚</span> Documenti in &quot;{selectedDomain}&quot;
                                 </h2>
 
                                 {loadingDocs ? (
